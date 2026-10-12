@@ -1,0 +1,80 @@
+pipeline {
+    agent any
+
+    environment {
+        REGISTRY = "praveenkumarr46"
+        IMAGE_NAME = "analytics-service"
+        GITOPS_REPO = "github.com/Praveenkumar76/URL-shortener-gitops.git"
+        GITOPS_BRANCH = "main"
+        SERVICE_DIR = "services/analytics-service"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                script {
+                    env.GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT_SHORT}"
+                }
+                sh """
+                if [ -d "${SERVICE_DIR}" ]; then
+                    cd ${SERVICE_DIR}
+                fi
+                docker build -t ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} -t ${REGISTRY}/${IMAGE_NAME}:latest .
+                """
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                    sh "docker push ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker push ${REGISTRY}/${IMAGE_NAME}:latest"
+                }
+            }
+        }
+
+        stage('Update GitOps Manifest') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-creds',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
+                    sh """
+                    git config --global user.name "Jenkins CI"
+                    git config --global user.email "jenkins-ci@local"
+
+                    rm -rf gitops-repo
+                    git clone -b ${GITOPS_BRANCH} https://${GIT_USER}:${GIT_PASS}@${GITOPS_REPO} gitops-repo
+                    cd gitops-repo
+
+                    sed -i.bak "s|image: ${REGISTRY}/${IMAGE_NAME}:.*|image: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}|g" ${IMAGE_NAME}/deployment.yaml
+                    rm -f ${IMAGE_NAME}/deployment.yaml.bak
+
+                    git add ${IMAGE_NAME}/deployment.yaml
+                    git commit -m "chore(gitops): auto-promote ${IMAGE_NAME}:${IMAGE_TAG} [skip ci]"
+                    git push origin ${GITOPS_BRANCH}
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
