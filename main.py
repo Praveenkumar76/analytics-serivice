@@ -22,7 +22,7 @@ class EventRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 events_store: List[Dict[str, Any]] = []
-# Milestones for triggering notification alerts
+# Milestones for triggering notification alert
 MILESTONES = {1, 5, 10, 25, 50, 100, 250, 500, 1000}
 
 @app.get("/healthz", status_code=status.HTTP_200_OK)
