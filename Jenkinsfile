@@ -64,10 +64,10 @@ pipeline {
                     git clone -b ${GITOPS_BRANCH} https://${GIT_USER}:${GIT_PASS}@${GITOPS_REPO} gitops-repo
                     cd gitops-repo
 
-                    sed -i.bak "s|image: ${REGISTRY}/${IMAGE_NAME}:.*|image: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}|g" ${IMAGE_NAME}/deployment.yaml
-                    rm -f ${IMAGE_NAME}/deployment.yaml.bak
+                    sed -i.bak "s|image: ${REGISTRY}/${IMAGE_NAME}:.*|image: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}|g" apps/${IMAGE_NAME}/base/deployment.yaml
+                    rm -f apps/${IMAGE_NAME}/base/deployment.yaml.bak
 
-                    git add ${IMAGE_NAME}/deployment.yaml
+                    git add apps/${IMAGE_NAME}/base/deployment.yaml
                     git commit -m "chore(gitops): auto-promote ${IMAGE_NAME}:${IMAGE_TAG} [skip ci]"
                     git push origin ${GITOPS_BRANCH}
                     """
