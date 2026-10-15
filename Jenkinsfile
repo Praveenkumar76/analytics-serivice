@@ -57,12 +57,13 @@ pipeline {
                     passwordVariable: 'GIT_PASS'
                 )]) {
                     sh """
-                    git config --global user.name "Jenkins CI"
-                    git config --global user.email "jenkins-ci@local"
-
                     rm -rf gitops-repo
                     git clone -b ${GITOPS_BRANCH} https://${GIT_USER}:${GIT_PASS}@${GITOPS_REPO} gitops-repo
                     cd gitops-repo
+
+                    # Run these INSIDE the cloned folder WITHOUT the --global flag
+                    git config user.name "Jenkins CI"
+                    git config user.email "jenkins-ci@local"
 
                     sed -i.bak "s|image: ${REGISTRY}/${IMAGE_NAME}:.*|image: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}|g" apps/${IMAGE_NAME}/base/deployment.yaml
                     rm -f apps/${IMAGE_NAME}/base/deployment.yaml.bak
