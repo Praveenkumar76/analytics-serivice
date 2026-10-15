@@ -1,9 +1,8 @@
 pipeline {
     agent any
 
-    // Polls GitHub every 1 minute for changes
     triggers {
-        pollSCM('H/1 * * * *')
+        pollSCM('* * * * *')
     }
 
     environment {
